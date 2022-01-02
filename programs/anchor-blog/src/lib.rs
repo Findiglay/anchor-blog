@@ -1,7 +1,4 @@
 use anchor_lang::prelude::*;
-use post::cpi::accounts::Create;
-use post::program::Post;
-use post::{self, BlogData, PostData};
 
 declare_id!("GkVkSsuDd8aDrgtD2VALYg7A16RHVxcyknyhmCMFmzWH");
 
@@ -13,20 +10,11 @@ pub mod anchor_blog {
         Ok(())
     }
 
-    pub fn create_post(ctx: Context<CreatePost>, post_account_bump: u8) -> ProgramResult {
-        let cpi_program = ctx.accounts.post_program.to_account_info();
-        let cpi_accounts = Create {
-            post_account: ctx.accounts.post_account.to_account_info(),
-            blog_account: ctx.accounts.blog_account.to_account_info(),
-            user: ctx.accounts.user.to_account_info(),
-            system_program: ctx.accounts.system_program.to_account_info(),
-        };
-        let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
-        
-        ctx.accounts.blog_account.post_count += 1;
-        let entry = ctx.accounts.blog_account.post_count;
-        
-        post::cpi::create(cpi_ctx, post_account_bump, entry)
+    pub fn create_post(ctx: Context<CreatePost>, post_account_bump: u8, title: String, body: String) -> ProgramResult {
+        ctx.accounts.post_account.bump = post_account_bump;
+        ctx.accounts.post_account.title = title;
+        ctx.accounts.post_account.body = body;
+        Ok(())
     }
 }
 
@@ -36,22 +24,22 @@ pub struct Initialize<'info> {
     #[account(
         init,
         seeds = [
-            b"blog_account".as_ref(),
+            b"blog".as_ref(),
         ],
         bump = blog_account_bump,
         payer = user
     )]
-    blog_account: Account<'info, BlogData>,
+    blog_account: Account<'info, Blog>,
+    #[account(mut)]
     user: Signer<'info>,
     system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
-#[instruction(post_account_bump: u8)]
+#[instruction(post_account_bump: u8, title: String, body: String)]
 pub struct CreatePost<'info> {
     #[account(mut)]
-    pub blog_account: Account<'info, BlogData>,
-    pub post_program: Program<'info, Post>,
+    pub blog_account: Account<'info, Blog>,
     #[account(
         init,
         seeds = [
@@ -60,10 +48,27 @@ pub struct CreatePost<'info> {
             &[blog_account.post_count as u8].as_ref()
         ],
         bump = post_account_bump,
-        payer = user
+        payer = user,
+        space = 10000
     )]
-    pub post_account: Account<'info, PostData>,
+    pub post_account: Account<'info, Post>,
     #[account(mut)]
     user: Signer<'info>,
     system_program: Program<'info, System>
+}
+
+#[account]
+#[derive(Default)]
+pub struct Blog {
+    pub bump: u8,
+    pub post_count: u8,
+}
+
+#[account]
+#[derive(Default)]
+pub struct Post {
+    pub bump: u8,
+    pub entry: u8,
+    pub title: String,
+    pub body: String,
 }

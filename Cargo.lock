@@ -127,7 +127,6 @@ name = "anchor-blog"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
- "post",
 ]
 
 [[package]]
@@ -756,13 +755,6 @@ dependencies = [
  "redox_syscall",
  "smallvec",
  "winapi",
-]
-
-[[package]]
-name = "post"
-version = "0.1.0"
-dependencies = [
- "anchor-lang",
 ]
 
 [[package]]
