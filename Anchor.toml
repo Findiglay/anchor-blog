@@ -1,0 +1,13 @@
+[programs.localnet]
+anchor_blog = "GkVkSsuDd8aDrgtD2VALYg7A16RHVxcyknyhmCMFmzWH"
+post = "9rpW2hHNcka8J4LCUEerdcpUhTyJDcTqMKxfzpg4JG3x"
+
+[registry]
+url = "https://anchor.projectserum.com"
+
+[provider]
+cluster = "localnet"
+wallet = "/Users/grantfindlay/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
