@@ -7,6 +7,7 @@ pub mod anchor_blog {
     use super::*;
     pub fn initialize(ctx: Context<Initialize>, blog_account_bump: u8) -> ProgramResult {
         ctx.accounts.blog_account.bump = blog_account_bump;
+        ctx.accounts.blog_account.authority = *ctx.accounts.user.to_account_info().key;
         Ok(())
     }
 
@@ -38,7 +39,7 @@ pub struct Initialize<'info> {
 #[derive(Accounts)]
 #[instruction(post_account_bump: u8, title: String, body: String)]
 pub struct CreatePost<'info> {
-    #[account(mut)]
+    #[account(mut, has_one = authority)]
     pub blog_account: Account<'info, Blog>,
     #[account(
         init,
@@ -48,13 +49,12 @@ pub struct CreatePost<'info> {
             &[blog_account.post_count as u8].as_ref()
         ],
         bump = post_account_bump,
-        payer = user,
+        payer = authority,
         space = 10000
     )]
     pub post_account: Account<'info, Post>,
-    #[account(mut)]
-    user: Signer<'info>,
-    system_program: Program<'info, System>
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>
 }
 
 #[account]
@@ -62,6 +62,7 @@ pub struct CreatePost<'info> {
 pub struct Blog {
     pub bump: u8,
     pub post_count: u8,
+    pub authority: Pubkey,
 }
 
 #[account]

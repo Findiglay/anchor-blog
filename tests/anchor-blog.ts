@@ -49,7 +49,7 @@ describe("anchor-blog", () => {
       accounts: {
         blogAccount,
         postAccount,
-        user: provider.wallet.publicKey,
+        authority: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       },
     });
