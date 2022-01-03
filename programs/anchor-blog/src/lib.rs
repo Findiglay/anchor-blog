@@ -26,6 +26,7 @@ pub struct Initialize<'info> {
         init,
         seeds = [
             b"blog".as_ref(),
+            user.key().as_ref(),
         ],
         bump = blog_account_bump,
         payer = user

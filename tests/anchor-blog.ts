@@ -12,11 +12,11 @@ describe("anchor-blog", () => {
   it("Creates a post", async () => {
     const [blogAccount, blogAccountBump] =
       await anchor.web3.PublicKey.findProgramAddress(
-        [Buffer.from("blog")],
+        [Buffer.from("blog"), provider.wallet.publicKey.toBuffer()],
         program.programId
       );
-    // Add your test here.
-    const tx = await program.rpc.initialize(blogAccountBump, {
+
+    await program.rpc.initialize(blogAccountBump, {
       accounts: {
         blogAccount,
         user: provider.wallet.publicKey,
