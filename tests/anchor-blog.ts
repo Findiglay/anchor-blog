@@ -9,7 +9,7 @@ describe("anchor-blog", () => {
   // @ts-expect-error
   const program = anchor.workspace.AnchorBlog as Program<AnchorBlog>;
 
-  it("Is initialized!", async () => {
+  it("Creates a post", async () => {
     const [blogAccount, blogAccountBump] =
       await anchor.web3.PublicKey.findProgramAddress(
         [Buffer.from("blog")],
@@ -23,13 +23,10 @@ describe("anchor-blog", () => {
         systemProgram: anchor.web3.SystemProgram.programId,
       },
     });
-    console.log("Your transaction signature", tx);
 
     const currentBlogAccountState = await program.account.blog.fetch(
       blogAccount
     );
-
-    console.log("currentBlogAccountState: ", currentBlogAccountState);
 
     const [postAccount, postAccountBump] =
       await anchor.web3.PublicKey.findProgramAddress(
@@ -40,12 +37,11 @@ describe("anchor-blog", () => {
         ],
         program.programId
       );
-    console.log("postAccount: ", postAccount);
-    console.log("postAccountBump: ", postAccountBump);
+
     const title = "Hello World";
     const body = "This is a test post";
 
-    const postTnx = await program.rpc.createPost(postAccountBump, title, body, {
+    await program.rpc.createPost(postAccountBump, title, body, {
       accounts: {
         blogAccount,
         postAccount,
@@ -53,8 +49,6 @@ describe("anchor-blog", () => {
         systemProgram: anchor.web3.SystemProgram.programId,
       },
     });
-
-    console.log("Your transaction signature", postTnx);
 
     const currentPostAccountState = await program.account.post.fetch(
       postAccount
