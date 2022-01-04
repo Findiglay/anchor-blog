@@ -41,7 +41,7 @@ function Posts({ blog, blogAccount }: PostsProps) {
 
     fetchPosts();
   }, [blog, blogAccount, wallet]);
-  console.log(posts);
+
   return (
     <div>
       <h1>Posts</h1>
