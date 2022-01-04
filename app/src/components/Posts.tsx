@@ -1,23 +1,21 @@
 import * as anchor from "@project-serum/anchor";
-import { useEffect, useState } from "react";
 import { useAnchorWallet } from "@solana/wallet-adapter-react";
-import * as config from "../utils/config";
+import { useEffect, useState } from "react";
 
 interface PostsProps {
   blog: any;
   blogAccount: anchor.web3.PublicKey;
+  program: anchor.Program;
 }
 
-function Posts({ blog, blogAccount }: PostsProps) {
-  const [posts, setPosts] = useState<any[]>([]);
+function Posts({ blog, blogAccount, program }: PostsProps) {
   const wallet = useAnchorWallet();
+  const [posts, setPosts] = useState<any[]>([]);
 
   useEffect(() => {
     async function fetchPosts() {
       try {
-        const provider = config.getProvider(wallet);
-        const program = config.getProgram(provider);
-
+        console.log("fetching posts...");
         const promises = Array.from(Array(blog.postCount)).map(async (_, i) => {
           const [postAccount] = await anchor.web3.PublicKey.findProgramAddress(
             [
@@ -28,7 +26,12 @@ function Posts({ blog, blogAccount }: PostsProps) {
             program.programId
           );
 
-          return program.account.post.fetch(postAccount);
+          const post = await program.account.post.fetch(postAccount);
+
+          return {
+            ...post,
+            key: postAccount.toBase58(),
+          };
         });
 
         const posts = await Promise.all(promises);
@@ -40,14 +43,14 @@ function Posts({ blog, blogAccount }: PostsProps) {
     }
 
     fetchPosts();
-  }, [blog, blogAccount, wallet]);
+  }, [blog, blogAccount, program, wallet]);
 
   return (
     <div>
-      <h1>Posts</h1>
-      {posts.map((post, i) => (
-        <div key={i}>
-          <h3>{post?.title}</h3>
+      <h2>Posts</h2>
+      {posts.map((post) => (
+        <div key={post.key}>
+          <h5>{post?.title}</h5>
           <p>{post?.body}</p>
         </div>
       ))}

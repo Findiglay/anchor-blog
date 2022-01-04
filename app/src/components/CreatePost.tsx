@@ -1,26 +1,27 @@
 import * as anchor from "@project-serum/anchor";
 import { useState } from "react";
-import { useAnchorWallet } from "@solana/wallet-adapter-react";
-import * as config from "../utils/config";
 
 interface CreatePostProps {
   blog: any;
   blogAccount: anchor.web3.PublicKey;
+  program: anchor.Program;
+  provider: anchor.Provider;
+  onCreate: () => void;
 }
 
-function CreatePost({ blog, blogAccount }: CreatePostProps) {
+function CreatePost({
+  blog,
+  blogAccount,
+  program,
+  provider,
+  onCreate,
+}: CreatePostProps) {
   const [loading, setLoading] = useState(false);
-  const wallet = useAnchorWallet();
-  console.log("blog: ", blog);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
 
   async function handlePublish() {
     setLoading(true);
-
-    const provider = config.getProvider(wallet);
-    const program = config.getProgram(provider);
-
-    const title = "Hello World";
-    const body = "This is a test post";
 
     try {
       const [postAccount, postAccountBump] =
@@ -41,21 +42,39 @@ function CreatePost({ blog, blogAccount }: CreatePostProps) {
           systemProgram: anchor.web3.SystemProgram.programId,
         },
       });
+      setTitle("");
+      setBody("");
+      onCreate();
     } catch (error) {
-      setLoading(false);
-      console.log(error);
+      console.error(error);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div>
-      <h1>Create a new post</h1>
+    <>
+      <h3>Create a new post</h3>
+      <div>
+        <label>
+          Title:
+          <input value={title} onChange={(e) => setTitle(e.target.value)} />
+        </label>
+      </div>
+      <div>
+        <label>
+          Body:
+          <textarea
+            rows={5}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+          />
+        </label>
+      </div>
       <button disabled={loading} onClick={handlePublish}>
         {loading ? "Publishing..." : "Create"}
       </button>
-    </div>
+    </>
   );
 }
 

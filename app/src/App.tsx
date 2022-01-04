@@ -2,24 +2,18 @@ import {
   ConnectionProvider,
   WalletProvider,
 } from "@solana/wallet-adapter-react";
-import {
-  WalletModalProvider,
-  WalletDisconnectButton,
-  WalletMultiButton,
-} from "@solana/wallet-adapter-react-ui";
-import * as config from "./utils/config";
+import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
+import * as config from "./config";
 import Main from "./components/Main";
+import "./index.css";
 
-// Default styles that can be overridden by your app
 require("@solana/wallet-adapter-react-ui/styles.css");
 
 function App() {
   return (
     <ConnectionProvider endpoint={config.endpoint}>
-      <WalletProvider wallets={config.wallets} autoConnect>
+      <WalletProvider wallets={config.wallets}>
         <WalletModalProvider>
-          <WalletMultiButton />
-          <WalletDisconnectButton />
           <Main />
         </WalletModalProvider>
       </WalletProvider>
