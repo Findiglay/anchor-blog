@@ -35,7 +35,6 @@ function Initialize({
     } catch (error) {
       setLoading(false);
       console.log(error);
-    } finally {
     }
   }
 

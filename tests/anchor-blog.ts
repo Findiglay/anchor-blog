@@ -28,12 +28,14 @@ describe("anchor-blog", () => {
       blogAccount
     );
 
+    const postNumber = new anchor.BN(currentBlogAccountState.postCount);
+    postNumber.toBuffer();
     const [postAccount, postAccountBump] =
       await anchor.web3.PublicKey.findProgramAddress(
         [
           Buffer.from("post"),
           blogAccount.toBuffer(),
-          new anchor.BN(currentBlogAccountState.postCount).toBuffer(),
+          new anchor.BN(currentBlogAccountState.postCount).toArrayLike(Buffer),
         ],
         program.programId
       );

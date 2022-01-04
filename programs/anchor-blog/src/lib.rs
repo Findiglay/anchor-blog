@@ -15,6 +15,8 @@ pub mod anchor_blog {
         ctx.accounts.post_account.bump = post_account_bump;
         ctx.accounts.post_account.title = title;
         ctx.accounts.post_account.body = body;
+        ctx.accounts.post_account.entry = ctx.accounts.blog_account.post_count;
+        ctx.accounts.blog_account.post_count += 1;
         Ok(())
     }
 }

@@ -48,8 +48,8 @@ function Main() {
     return <div>loading...</div>;
   }
 
-  if (initialized) {
-    return <CreatePost blog={blog} />;
+  if (initialized && blogAddress) {
+    return <CreatePost blog={blog} blogAccount={blogAddress.pda} />;
   }
 
   return blogAddress ? (
