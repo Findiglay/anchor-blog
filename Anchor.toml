@@ -5,7 +5,7 @@ anchor_blog = "HkUTPinS5eZotWjoTqDpHWxXrcZqSfn79uQQgmTL5uxg"
 url = "https://anchor.projectserum.com"
 
 [provider]
-cluster = "devnet"
+cluster = "localnet"
 wallet = "/Users/grantfindlay/.config/solana/id.json"
 
 [scripts]

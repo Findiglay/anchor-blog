@@ -1,3 +1,4 @@
+import assert from "assert";
 import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
 import { AnchorBlog } from "../target/types/anchor_blog";
@@ -9,7 +10,7 @@ describe("anchor-blog", () => {
   // @ts-expect-error
   const program = anchor.workspace.AnchorBlog as Program<AnchorBlog>;
 
-  it("Creates a post", async () => {
+  it("Initializes with 0 entries", async () => {
     const [blogAccount, blogAccountBump] =
       await anchor.web3.PublicKey.findProgramAddress(
         [Buffer.from("blog_v0"), provider.wallet.publicKey.toBuffer()],
@@ -24,8 +25,15 @@ describe("anchor-blog", () => {
       },
     });
 
-    const currentBlogAccountState = await program.account.blog.fetch(
-      blogAccount
+    const blogState = await program.account.blog.fetch(blogAccount);
+
+    assert.equal(0, blogState.postCount);
+  });
+
+  it("Creates a post and correctly increments the post count", async () => {
+    const [blogAccount] = await anchor.web3.PublicKey.findProgramAddress(
+      [Buffer.from("blog_v0"), provider.wallet.publicKey.toBuffer()],
+      program.programId
     );
 
     const [postAccount, postAccountBump] =
@@ -33,13 +41,13 @@ describe("anchor-blog", () => {
         [
           Buffer.from("post"),
           blogAccount.toBuffer(),
-          new anchor.BN(currentBlogAccountState.postCount).toArrayLike(Buffer),
+          new anchor.BN(0).toArrayLike(Buffer),
         ],
         program.programId
       );
 
     const title = "Hello World";
-    const body = "This is a test post";
+    const body = "gm, this is a test post";
 
     await program.rpc.createPost(postAccountBump, title, body, {
       accounts: {
@@ -50,9 +58,11 @@ describe("anchor-blog", () => {
       },
     });
 
-    const currentPostAccountState = await program.account.post.fetch(
-      postAccount
-    );
-    console.log("Current post account state", currentPostAccountState);
+    const blogState = await program.account.blog.fetch(blogAccount);
+    const postState = await program.account.post.fetch(postAccount);
+
+    assert.equal(1, blogState.postCount);
+    assert.equal("Hello World", postState.title);
+    assert.equal("gm, this is a test post", postState.body);
   });
 });
