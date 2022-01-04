@@ -4,6 +4,7 @@ import { useAnchorWallet, AnchorWallet } from "@solana/wallet-adapter-react";
 import * as config from "../utils/config";
 import Initialize from "./Initialize";
 import CreatePost from "./CreatePost";
+import Posts from "./Posts";
 
 function Main() {
   const wallet = useAnchorWallet();
@@ -22,7 +23,7 @@ function Main() {
     const program = config.getProgram(provider);
 
     const [pda, bump] = await anchor.web3.PublicKey.findProgramAddress(
-      [Buffer.from("blog"), wallet.publicKey.toBuffer()],
+      [Buffer.from("blog_v0"), wallet.publicKey.toBuffer()],
       config.programID
     );
     setBlogAddress({ pda, bump });
@@ -49,7 +50,12 @@ function Main() {
   }
 
   if (initialized && blogAddress) {
-    return <CreatePost blog={blog} blogAccount={blogAddress.pda} />;
+    return (
+      <>
+        <CreatePost blog={blog} blogAccount={blogAddress.pda} />
+        <Posts blog={blog} blogAccount={blogAddress.pda} />
+      </>
+    );
   }
 
   return blogAddress ? (

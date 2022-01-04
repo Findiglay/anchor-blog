@@ -27,7 +27,7 @@ pub struct Initialize<'info> {
     #[account(
         init,
         seeds = [
-            b"blog".as_ref(),
+            b"blog_v0".as_ref(),
             user.key().as_ref(),
         ],
         bump = blog_account_bump,

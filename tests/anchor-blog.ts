@@ -12,7 +12,7 @@ describe("anchor-blog", () => {
   it("Creates a post", async () => {
     const [blogAccount, blogAccountBump] =
       await anchor.web3.PublicKey.findProgramAddress(
-        [Buffer.from("blog"), provider.wallet.publicKey.toBuffer()],
+        [Buffer.from("blog_v0"), provider.wallet.publicKey.toBuffer()],
         program.programId
       );
 
@@ -28,8 +28,6 @@ describe("anchor-blog", () => {
       blogAccount
     );
 
-    const postNumber = new anchor.BN(currentBlogAccountState.postCount);
-    postNumber.toBuffer();
     const [postAccount, postAccountBump] =
       await anchor.web3.PublicKey.findProgramAddress(
         [

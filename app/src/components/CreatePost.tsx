@@ -3,12 +3,12 @@ import { useState } from "react";
 import { useAnchorWallet } from "@solana/wallet-adapter-react";
 import * as config from "../utils/config";
 
-interface InitializeProps {
+interface CreatePostProps {
   blog: any;
   blogAccount: anchor.web3.PublicKey;
 }
 
-function CreatePost({ blog, blogAccount }: InitializeProps) {
+function CreatePost({ blog, blogAccount }: CreatePostProps) {
   const [loading, setLoading] = useState(false);
   const wallet = useAnchorWallet();
   console.log("blog: ", blog);
@@ -44,6 +44,8 @@ function CreatePost({ blog, blogAccount }: InitializeProps) {
     } catch (error) {
       setLoading(false);
       console.log(error);
+    } finally {
+      setLoading(false);
     }
   }
 
