@@ -1,16 +1,25 @@
 import * as anchor from "@project-serum/anchor";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useState } from "react";
+import { useAnchorWallet } from "@solana/wallet-adapter-react";
 import * as config from "../utils/config";
 
 interface InitializeProps {
   blogAccount: string;
   blogAccountBump: number;
+  onInitialize: () => void;
 }
 
-function Initialize({ blogAccount, blogAccountBump }: InitializeProps) {
-  const wallet = useWallet();
+function Initialize({
+  blogAccount,
+  blogAccountBump,
+  onInitialize,
+}: InitializeProps) {
+  const [loading, setLoading] = useState(false);
+  const wallet = useAnchorWallet();
 
   async function handleInit() {
+    setLoading(true);
+
     const provider = config.getProvider(wallet);
     const program = config.getProgram(provider);
 
@@ -22,15 +31,20 @@ function Initialize({ blogAccount, blogAccountBump }: InitializeProps) {
           systemProgram: anchor.web3.SystemProgram.programId,
         },
       });
+      onInitialize();
     } catch (error) {
+      setLoading(false);
       console.log(error);
+    } finally {
     }
   }
 
   return (
     <div>
       <h1>Initialize your blog</h1>
-      <button onClick={handleInit}>Initialize</button>
+      <button disabled={loading} onClick={handleInit}>
+        {loading ? "Initializing..." : "Initialize"}
+      </button>
     </div>
   );
 }
