@@ -19,6 +19,12 @@ pub mod anchor_blog {
         ctx.accounts.blog_account.post_count += 1;
         Ok(())
     }
+
+    pub fn update_post(ctx: Context<UpdatePost>, title: String, body: String) -> ProgramResult {
+        ctx.accounts.post_account.title = title;
+        ctx.accounts.post_account.body = body;
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -58,6 +64,16 @@ pub struct CreatePost<'info> {
     pub post_account: Account<'info, Post>,
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>
+}
+
+#[derive(Accounts)]
+#[instruction(tite: String, body: String)]
+pub struct UpdatePost<'info> {
+    #[account(mut, has_one = authority)]
+    pub blog_account: Account<'info, Blog>,
+    #[account(mut)]
+    pub post_account: Account<'info, Post>,
+    pub authority: Signer<'info>,
 }
 
 #[account]
