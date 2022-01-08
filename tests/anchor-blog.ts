@@ -71,26 +71,6 @@ describe("anchor-blog", async () => {
     assert.equal(1, blogState.postCount);
   });
 
-  it("Updates a post", async () => {
-    const title = "Hello World Update";
-    const body = "gm, this post has been updated";
-
-    await program.rpc.updatePost(title, body, {
-      accounts: {
-        blogAccount,
-        postAccount: firstPostAccount,
-        authority: provider.wallet.publicKey,
-      },
-    });
-
-    const blogState = await program.account.blog.fetch(blogAccount);
-    const postState = await program.account.post.fetch(firstPostAccount);
-
-    assert.equal(1, blogState.postCount);
-    assert.equal(title, postState.title);
-    assert.equal(body, postState.body);
-  });
-
   it("Requires correct authority to create a post", async () => {
     const title = "Hello World";
     const body = "gm, this is an unauthorized post";
@@ -126,6 +106,26 @@ describe("anchor-blog", async () => {
     } finally {
       assert.equal(error.message, "Signature verification failed");
     }
+  });
+
+  it("Updates a post", async () => {
+    const title = "Hello World Update";
+    const body = "gm, this post has been updated";
+
+    await program.rpc.updatePost(title, body, {
+      accounts: {
+        blogAccount,
+        postAccount: firstPostAccount,
+        authority: provider.wallet.publicKey,
+      },
+    });
+
+    const blogState = await program.account.blog.fetch(blogAccount);
+    const postState = await program.account.post.fetch(firstPostAccount);
+
+    assert.equal(1, blogState.postCount);
+    assert.equal(title, postState.title);
+    assert.equal(body, postState.body);
   });
 
   it("Requires correct authority to update a post", async () => {
