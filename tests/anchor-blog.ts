@@ -1,7 +1,6 @@
 import assert from "assert";
 import * as anchor from "@project-serum/anchor";
-import { Program } from "@project-serum/anchor";
-import { AnchorBlog } from "../target/types/anchor_blog";
+import * as helpers from "./helpers";
 
 describe("anchor-blog", async () => {
   // Configure the client to use the local cluster.
@@ -10,8 +9,11 @@ describe("anchor-blog", async () => {
     anchor.Provider.defaultOptions().preflightCommitment
   );
 
-  const provider = getProvider(connection, anchor.web3.Keypair.generate());
-  const program = getProgram(provider);
+  const provider = helpers.getProvider(
+    connection,
+    anchor.web3.Keypair.generate()
+  );
+  const program = helpers.getProgram(provider);
 
   const [blogAccount, blogAccountBump] =
     await anchor.web3.PublicKey.findProgramAddress(
@@ -40,7 +42,7 @@ describe("anchor-blog", async () => {
     );
 
   before(async () => {
-    await requestAirdrop(connection, provider.wallet.publicKey);
+    await helpers.requestAirdrop(connection, provider.wallet.publicKey);
   });
 
   it("Initializes with 0 entries", async () => {
@@ -106,9 +108,9 @@ describe("anchor-blog", async () => {
 
     try {
       const newKeypair = anchor.web3.Keypair.generate();
-      await requestAirdrop(connection, newKeypair.publicKey);
-      const newProvider = getProvider(connection, newKeypair);
-      const newProgram = getProgram(newProvider);
+      await helpers.requestAirdrop(connection, newKeypair.publicKey);
+      const newProvider = helpers.getProvider(connection, newKeypair);
+      const newProgram = helpers.getProgram(newProvider);
 
       await newProgram.rpc.createPost(secondPostAccountBump, title, body, {
         accounts: {
@@ -133,9 +135,9 @@ describe("anchor-blog", async () => {
 
     try {
       const newKeypair = anchor.web3.Keypair.generate();
-      await requestAirdrop(connection, newKeypair.publicKey);
-      const newProvider = getProvider(connection, newKeypair);
-      const newProgram = getProgram(newProvider);
+      await helpers.requestAirdrop(connection, newKeypair.publicKey);
+      const newProvider = helpers.getProvider(connection, newKeypair);
+      const newProgram = helpers.getProgram(newProvider);
 
       await newProgram.rpc.updatePost(title, body, {
         accounts: {
@@ -186,33 +188,3 @@ describe("anchor-blog", async () => {
     }
   });
 });
-
-function getProgram(provider: anchor.Provider): Program<AnchorBlog> {
-  const idl = require("../target/idl/anchor_blog.json");
-  const programID = new anchor.web3.PublicKey(idl.metadata.address);
-  return new anchor.Program(idl, programID, provider);
-}
-
-function getProvider(
-  connection: anchor.web3.Connection,
-  keypair: anchor.web3.Keypair
-): anchor.Provider {
-  // @ts-expect-error
-  const wallet = new anchor.Wallet(keypair);
-  return new anchor.Provider(
-    connection,
-    wallet,
-    anchor.Provider.defaultOptions()
-  );
-}
-
-async function requestAirdrop(
-  connection: anchor.web3.Connection,
-  publicKey: anchor.web3.PublicKey
-) {
-  const airdropSignature = await connection.requestAirdrop(
-    publicKey,
-    anchor.web3.LAMPORTS_PER_SOL * 20
-  );
-  await connection.confirmTransaction(airdropSignature);
-}
