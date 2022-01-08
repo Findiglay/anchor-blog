@@ -31,16 +31,6 @@ describe("anchor-blog", async () => {
       program.programId
     );
 
-  const [secondPostAccount, secondPostAccountBump] =
-    await anchor.web3.PublicKey.findProgramAddress(
-      [
-        Buffer.from("post"),
-        blogAccount.toBuffer(),
-        new anchor.BN(1).toArrayLike(Buffer),
-      ],
-      program.programId
-    );
-
   before(async () => {
     await helpers.requestAirdrop(connection, provider.wallet.publicKey);
   });
@@ -75,9 +65,10 @@ describe("anchor-blog", async () => {
     const blogState = await program.account.blog.fetch(blogAccount);
     const postState = await program.account.post.fetch(firstPostAccount);
 
-    assert.equal(1, blogState.postCount);
     assert.equal(title, postState.title);
     assert.equal(body, postState.body);
+    assert.equal(0, postState.entry);
+    assert.equal(1, blogState.postCount);
   });
 
   it("Updates a post", async () => {
@@ -105,6 +96,16 @@ describe("anchor-blog", async () => {
     const body = "gm, this is an unauthorized post";
 
     let error;
+
+    const [secondPostAccount, secondPostAccountBump] =
+      await anchor.web3.PublicKey.findProgramAddress(
+        [
+          Buffer.from("post"),
+          blogAccount.toBuffer(),
+          new anchor.BN(1).toArrayLike(Buffer),
+        ],
+        program.programId
+      );
 
     try {
       const newKeypair = anchor.web3.Keypair.generate();
@@ -150,41 +151,6 @@ describe("anchor-blog", async () => {
       error = err;
     } finally {
       assert.equal(error.message, "Signature verification failed");
-    }
-  });
-
-  it("Requires post to be created in incremental order", async () => {
-    const [tenthPostAccount, tenthPostAccountBump] =
-      await anchor.web3.PublicKey.findProgramAddress(
-        [
-          Buffer.from("post"),
-          blogAccount.toBuffer(),
-          new anchor.BN(9).toArrayLike(Buffer),
-        ],
-        program.programId
-      );
-
-    const title = "Hello World for the 10th Time";
-    const body = "gm, this post won't be created";
-
-    let error;
-
-    try {
-      await program.rpc.createPost(tenthPostAccountBump, title, body, {
-        accounts: {
-          blogAccount,
-          postAccount: tenthPostAccount,
-          authority: provider.wallet.publicKey,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        },
-      });
-    } catch (err) {
-      error = err;
-    } finally {
-      assert.equal(
-        error.message,
-        "failed to send transaction: Transaction simulation failed: Error processing Instruction 0: Program failed to complete"
-      );
     }
   });
 });
