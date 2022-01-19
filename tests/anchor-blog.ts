@@ -71,7 +71,7 @@ describe("anchor-blog", async () => {
     assert.equal(1, blogState.postCount);
   });
 
-  it("Requires correct authority to create a post", async () => {
+  it("Requires the correct signer to create a post", async () => {
     const title = "Hello World";
     const body = "gm, this is an unauthorized post";
 
