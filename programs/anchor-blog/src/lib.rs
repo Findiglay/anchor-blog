@@ -13,6 +13,7 @@ pub mod anchor_blog {
 
     pub fn create_post(ctx: Context<CreatePost>, post_account_bump: u8, title: String, body: String) -> ProgramResult {
         ctx.accounts.post_account.bump = post_account_bump;
+        ctx.accounts.post_account.authority = *ctx.accounts.authority.to_account_info().key;
         ctx.accounts.post_account.title = title;
         ctx.accounts.post_account.body = body;
         ctx.accounts.post_account.entry = ctx.accounts.blog_account.post_count;
@@ -71,7 +72,7 @@ pub struct CreatePost<'info> {
 pub struct UpdatePost<'info> {
     #[account(mut, has_one = authority)]
     pub blog_account: Account<'info, Blog>,
-    #[account(mut)]
+    #[account(mut, has_one = authority)]
     pub post_account: Account<'info, Post>,
     pub authority: Signer<'info>,
 }
@@ -87,6 +88,7 @@ pub struct Blog {
 #[account]
 #[derive(Default)]
 pub struct Post {
+    pub authority: Pubkey,
     pub bump: u8,
     pub entry: u8,
     pub title: String,

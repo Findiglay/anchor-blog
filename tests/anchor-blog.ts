@@ -75,8 +75,6 @@ describe("anchor-blog", async () => {
     const title = "Hello World";
     const body = "gm, this is an unauthorized post";
 
-    let error;
-
     const [secondPostAccount, secondPostAccountBump] =
       await anchor.web3.PublicKey.findProgramAddress(
         [
@@ -86,13 +84,14 @@ describe("anchor-blog", async () => {
         ],
         program.programId
       );
+    const newKeypair = anchor.web3.Keypair.generate();
+    await helpers.requestAirdrop(connection, newKeypair.publicKey);
+    const newProvider = helpers.getProvider(connection, newKeypair);
+    const newProgram = helpers.getProgram(newProvider);
+
+    let error;
 
     try {
-      const newKeypair = anchor.web3.Keypair.generate();
-      await helpers.requestAirdrop(connection, newKeypair.publicKey);
-      const newProvider = helpers.getProvider(connection, newKeypair);
-      const newProgram = helpers.getProgram(newProvider);
-
       await newProgram.rpc.createPost(secondPostAccountBump, title, body, {
         accounts: {
           blogAccount,
@@ -128,18 +127,18 @@ describe("anchor-blog", async () => {
     assert.equal(body, postState.body);
   });
 
-  it("Requires correct authority to update a post", async () => {
+  it("Requires the correct signer to update a post", async () => {
     const title = "Hello World Update";
     const body = "gm, this post has been updated";
+
+    const newKeypair = anchor.web3.Keypair.generate();
+    await helpers.requestAirdrop(connection, newKeypair.publicKey);
+    const newProvider = helpers.getProvider(connection, newKeypair);
+    const newProgram = helpers.getProgram(newProvider);
 
     let error;
 
     try {
-      const newKeypair = anchor.web3.Keypair.generate();
-      await helpers.requestAirdrop(connection, newKeypair.publicKey);
-      const newProvider = helpers.getProvider(connection, newKeypair);
-      const newProgram = helpers.getProgram(newProvider);
-
       await newProgram.rpc.updatePost(title, body, {
         accounts: {
           blogAccount,
@@ -150,7 +149,48 @@ describe("anchor-blog", async () => {
     } catch (err) {
       error = err;
     } finally {
-      assert.equal(error.message, "Signature verification failed");
+      assert.equal(error?.message, "Signature verification failed");
+    }
+  });
+
+  it("Will not allow updating another blog's post", async () => {
+    const newKeypair = anchor.web3.Keypair.generate();
+    await helpers.requestAirdrop(connection, newKeypair.publicKey);
+    const newProvider = helpers.getProvider(connection, newKeypair);
+    const newProgram = helpers.getProgram(newProvider);
+
+    const [newBlogAccount, newBlogAccountBump] =
+      await anchor.web3.PublicKey.findProgramAddress(
+        [Buffer.from("blog_v0"), newKeypair.publicKey.toBuffer()],
+        program.programId
+      );
+    // Initialize person B's blog
+    await newProgram.rpc.initialize(newBlogAccountBump, {
+      accounts: {
+        blogAccount: newBlogAccount,
+        user: newKeypair.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      },
+    });
+
+    let error;
+
+    try {
+      await newProgram.rpc.updatePost(
+        "Scam World Update",
+        "gm, this post has been hacked",
+        {
+          accounts: {
+            blogAccount: newBlogAccount,
+            postAccount: firstPostAccount,
+            authority: newKeypair.publicKey,
+          },
+        }
+      );
+    } catch (err) {
+      error = err;
+    } finally {
+      assert(error?.message.includes("has_one constraint was violated"));
     }
   });
 });
