@@ -2,6 +2,11 @@ use anchor_lang::prelude::*;
 
 declare_id!("9PDAEyiU5GXhb3kJoGyasqT7tX2KxfE8Dpk7fY2c2WTY");
 
+// Prefix used in PDA derivations to avoid collisions.
+const POST_PREFIX: &str = "post";
+const BLOG_PREFIX: &str = "blog";
+const FOLLOW_PREFIX: &str = "follow";
+
 #[program]
 pub mod anchor_blog {
     use super::*;
@@ -15,12 +20,13 @@ pub mod anchor_blog {
         Ok(())
     }
 
-    pub fn follow_blog(ctx: Context<FollowBlog>) -> ProgramResult {
-        let blog_account = &mut ctx.accounts.blog_account;
-        let follower = &mut ctx.accounts.follower_account;
+    pub fn follow_blog(ctx: Context<FollowBlog>, follow_account_bump: u8) -> ProgramResult {
+        let follow_account = &mut ctx.accounts.follow_account;
         
-        blog_account.followers.push(*follower.to_account_info().key);
-        follower.following.push(*blog_account.to_account_info().key);
+        follow_account.bump = follow_account_bump;
+        follow_account.parent = *ctx.accounts.follower_blog_account.to_account_info().key;
+        follow_account.target = *ctx.accounts.blog_account.to_account_info().key;
+        follow_account.update_authority = *ctx.accounts.update_authority.to_account_info().key;
         
         Ok(())
     }
@@ -73,8 +79,6 @@ pub struct Blog {
     pub bump: u8,
     pub post_count: u32,
     pub update_authority: Pubkey,
-    pub followers: Vec<Pubkey>,
-    pub following: Vec<Pubkey>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
@@ -107,13 +111,22 @@ pub struct Post {
     pub update_authority: Pubkey,
 }
 
+#[account]
+#[derive(Default)]
+pub struct Follow {
+    pub bump: u8,
+    pub update_authority: Pubkey,
+    pub parent: Pubkey, // Parent is the account that is following.
+    pub target: Pubkey, // Target is the account that is being followed. 
+}
+
 #[derive(Accounts)]
 #[instruction(blog_account_bump: u8)]
 pub struct Initialize<'info> {
     #[account(
         init,
         seeds = [
-            b"blog".as_ref(),
+            BLOG_PREFIX.as_bytes(),
             update_authority.key().as_ref(),
         ],
         bump = blog_account_bump,
@@ -126,12 +139,28 @@ pub struct Initialize<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(follow_account_bump: u8)]
 pub struct FollowBlog<'info> {
-    #[account(mut)]
     blog_account: Account<'info, Blog>,
-    #[account(mut, has_one = update_authority)]
-    follower_account: Account<'info, Blog>,
+    #[account(
+        init,
+        seeds = [
+            FOLLOW_PREFIX.as_bytes(),
+            blog_account.key().as_ref(),
+            follower_blog_account.key().as_ref(),
+        ],
+        bump = follow_account_bump,
+        payer = update_authority
+    )]
+    follow_account: Account<'info, Follow>,
+    #[account(
+        constraint = blog_account.key() != follower_blog_account.key(),
+        has_one = update_authority
+    )]
+    follower_blog_account: Account<'info, Blog>,
+    #[account(mut)]
     update_authority: Signer<'info>,
+    system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -142,7 +171,7 @@ pub struct CreatePost<'info> {
     #[account(
         init,
         seeds = [
-            b"post".as_ref(),
+            POST_PREFIX.as_bytes(),
             blog_account.key().as_ref(),
             blog_account.post_count.to_le_bytes().as_ref()
         ],
@@ -179,6 +208,6 @@ pub struct LikePost<'info> {
 
 #[error]
 pub enum ErrorCode {
-    #[msg("Can't follow yourself")]
-    CannotFollowSelf,
+    #[msg("Invalid follow")]
+    InvalidFollow,
 }
