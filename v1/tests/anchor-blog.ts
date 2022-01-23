@@ -17,7 +17,7 @@ describe("anchor-blog", async () => {
 
   const [blogAccount, blogAccountBump] =
     await anchor.web3.PublicKey.findProgramAddress(
-      [Buffer.from("blog_v0"), provider.wallet.publicKey.toBuffer()],
+      [Buffer.from("blog"), provider.wallet.publicKey.toBuffer()],
       program.programId
     );
 
@@ -26,7 +26,7 @@ describe("anchor-blog", async () => {
       [
         Buffer.from("post"),
         blogAccount.toBuffer(),
-        new anchor.BN(0).toArrayLike(Buffer),
+        new anchor.BN(0).toArrayLike(Buffer, "le", 4),
       ],
       program.programId
     );
@@ -35,11 +35,11 @@ describe("anchor-blog", async () => {
     await helpers.requestAirdrop(connection, provider.wallet.publicKey);
   });
 
-  it.only("Initializes with 0 entries", async () => {
+  it("Initializes with 0 entries", async () => {
     await program.rpc.initialize(blogAccountBump, {
       accounts: {
         blogAccount,
-        user: provider.wallet.publicKey,
+        updateAuthority: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       },
     });
@@ -50,14 +50,17 @@ describe("anchor-blog", async () => {
   });
 
   it("Creates a post and increments the post count", async () => {
-    const title = "Hello World";
-    const body = "gm, this is a test post";
+    const metadata = {
+      title: "Hello World",
+      description: "gm, this is a test post",
+      uri: "https://ipfs.io/ipfs/somehash",
+    };
 
-    await program.rpc.createPost(firstPostAccountBump, title, body, {
+    await program.rpc.createPost(firstPostAccountBump, metadata, {
       accounts: {
         blogAccount,
         postAccount: firstPostAccount,
-        authority: provider.wallet.publicKey,
+        updateAuthority: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       },
     });
@@ -65,22 +68,25 @@ describe("anchor-blog", async () => {
     const blogState = await program.account.blog.fetch(blogAccount);
     const postState = await program.account.post.fetch(firstPostAccount);
 
-    assert.equal(title, postState.title);
-    assert.equal(body, postState.body);
+    assert.equal(metadata.title, postState.data.title);
+    assert.equal(metadata.description, postState.data.description);
     assert.equal(0, postState.entry);
     assert.equal(1, blogState.postCount);
   });
 
   it("Requires the correct signer to create a post", async () => {
-    const title = "Hello World";
-    const body = "gm, this is an unauthorized post";
+    const metadata = {
+      title: "Hello World",
+      description: "gm, this is an unauthorized post",
+      uri: "https://ipfs.io/ipfs/somehash",
+    };
 
     const [secondPostAccount, secondPostAccountBump] =
       await anchor.web3.PublicKey.findProgramAddress(
         [
           Buffer.from("post"),
           blogAccount.toBuffer(),
-          new anchor.BN(1).toArrayLike(Buffer),
+          new anchor.BN(1).toArrayLike(Buffer, "le", 4),
         ],
         program.programId
       );
@@ -92,11 +98,11 @@ describe("anchor-blog", async () => {
     let error;
 
     try {
-      await newProgram.rpc.createPost(secondPostAccountBump, title, body, {
+      await newProgram.rpc.createPost(secondPostAccountBump, metadata, {
         accounts: {
           blogAccount,
           postAccount: secondPostAccount,
-          authority: provider.wallet.publicKey,
+          updateAuthority: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
         },
       });
@@ -108,14 +114,16 @@ describe("anchor-blog", async () => {
   });
 
   it("Updates a post", async () => {
-    const title = "Hello World Update";
-    const body = "gm, this post has been updated";
+    const metadata = {
+      title: "Hello World Update",
+      description: "gm, this post has been updated",
+      uri: "https://ipfs.io/ipfs/somehash",
+    };
 
-    await program.rpc.updatePost(title, body, {
+    await program.rpc.updatePost(metadata, {
       accounts: {
-        blogAccount,
         postAccount: firstPostAccount,
-        authority: provider.wallet.publicKey,
+        updateAuthority: provider.wallet.publicKey,
       },
     });
 
@@ -123,13 +131,16 @@ describe("anchor-blog", async () => {
     const postState = await program.account.post.fetch(firstPostAccount);
 
     assert.equal(1, blogState.postCount);
-    assert.equal(title, postState.title);
-    assert.equal(body, postState.body);
+    assert.equal(metadata.title, postState.data.title);
+    assert.equal(metadata.description, postState.data.description);
   });
 
   it("Requires the correct signer to update a post", async () => {
-    const title = "Hello World Update";
-    const body = "gm, this post has been updated";
+    const metadata = {
+      title: "Hello World Update",
+      description: "gm, this post has been updated",
+      uri: "https://ipfs.io/ipfs/somehash",
+    };
 
     const newKeypair = anchor.web3.Keypair.generate();
     await helpers.requestAirdrop(connection, newKeypair.publicKey);
@@ -139,11 +150,10 @@ describe("anchor-blog", async () => {
     let error;
 
     try {
-      await newProgram.rpc.updatePost(title, body, {
+      await newProgram.rpc.updatePost(metadata, {
         accounts: {
-          blogAccount,
           postAccount: firstPostAccount,
-          authority: provider.wallet.publicKey,
+          updateAuthority: provider.wallet.publicKey,
         },
       });
     } catch (err) {
@@ -154,6 +164,12 @@ describe("anchor-blog", async () => {
   });
 
   it("Will not allow updating another blog's post", async () => {
+    const metadata = {
+      title: "Hello World Update",
+      description: "gm, this post has been updated",
+      uri: "https://ipfs.io/ipfs/somehash",
+    };
+
     const newKeypair = anchor.web3.Keypair.generate();
     await helpers.requestAirdrop(connection, newKeypair.publicKey);
     const newProvider = helpers.getProvider(connection, newKeypair);
@@ -161,14 +177,14 @@ describe("anchor-blog", async () => {
 
     const [newBlogAccount, newBlogAccountBump] =
       await anchor.web3.PublicKey.findProgramAddress(
-        [Buffer.from("blog_v0"), newKeypair.publicKey.toBuffer()],
+        [Buffer.from("blog"), newKeypair.publicKey.toBuffer()],
         program.programId
       );
     // Initialize person B's blog
     await newProgram.rpc.initialize(newBlogAccountBump, {
       accounts: {
         blogAccount: newBlogAccount,
-        user: newKeypair.publicKey,
+        updateAuthority: newKeypair.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       },
     });
@@ -176,17 +192,12 @@ describe("anchor-blog", async () => {
     let error;
 
     try {
-      await newProgram.rpc.updatePost(
-        "Scam World Update",
-        "gm, this post has been hacked",
-        {
-          accounts: {
-            blogAccount: newBlogAccount,
-            postAccount: firstPostAccount,
-            authority: newKeypair.publicKey,
-          },
-        }
-      );
+      await newProgram.rpc.updatePost(metadata, {
+        accounts: {
+          postAccount: firstPostAccount,
+          updateAuthority: newKeypair.publicKey,
+        },
+      });
     } catch (err) {
       error = err;
     } finally {

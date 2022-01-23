@@ -2,18 +2,14 @@ use anchor_lang::prelude::*;
 
 declare_id!("9PDAEyiU5GXhb3kJoGyasqT7tX2KxfE8Dpk7fY2c2WTY");
 
-pub const BLOG: &str = "blog";
-pub const POST: &str = "post";
-
 #[program]
 pub mod anchor_blog {
     use super::*;
     
-    pub fn initialize(ctx: Context<Initialize>, blog_account_bump: u8, creator: Creator) -> ProgramResult {
+    pub fn initialize(ctx: Context<Initialize>, blog_account_bump: u8) -> ProgramResult {
         let blog_account = &mut ctx.accounts.blog_account;
         
         blog_account.bump = blog_account_bump;
-        blog_account.creator = creator;
         blog_account.update_authority = *ctx.accounts.update_authority.to_account_info().key;
         
         Ok(())
@@ -29,27 +25,27 @@ pub mod anchor_blog {
         Ok(())
     }
 
-    pub fn create_post(ctx: Context<CreatePost>, post_account_bump: u8, title: String, description: String, uri: String) -> ProgramResult {
+    pub fn create_post(ctx: Context<CreatePost>, post_account_bump: u8, data: PostMetadata) -> ProgramResult {
         let post_account = &mut ctx.accounts.post_account;
         let blog_account = &mut ctx.accounts.blog_account;
         
         post_account.bump = post_account_bump;
         post_account.entry = blog_account.post_count;
-        post_account.data.title = title;
-        post_account.data.description = description;
-        post_account.data.uri = uri;
+        post_account.data.title = data.title;
+        post_account.data.description = data.description;
+        post_account.data.uri = data.uri;
         blog_account.post_count += 1;
         
         post_account.update_authority = *ctx.accounts.update_authority.to_account_info().key;
         Ok(())
     }
 
-    pub fn update_post(ctx: Context<UpdatePost>, title: String, description: String, uri: String) -> ProgramResult {
+    pub fn update_post(ctx: Context<UpdatePost>, data: PostMetadata) -> ProgramResult {
         let post_account = &mut ctx.accounts.post_account;
         
-        post_account.data.title = title;
-        post_account.data.description = description;
-        post_account.data.uri = uri;
+        post_account.data.title = data.title;
+        post_account.data.description = data.description;
+        post_account.data.uri = data.uri;
         
         Ok(())
     }
@@ -57,7 +53,7 @@ pub mod anchor_blog {
     pub fn publish_post(ctx: Context<PublishPost>) -> ProgramResult {
         let post_account = &mut ctx.accounts.post_account;
         
-        post_account.data.state = PostState::Published;
+        post_account.state = PostState::Published;
         
         Ok(())
     }
@@ -65,16 +61,10 @@ pub mod anchor_blog {
     pub fn like_post(ctx: Context<LikePost>) -> ProgramResult {
         let post_account = &mut ctx.accounts.post_account;
         
-        post_account.data.likes += 1;
+        post_account.likes += 1;
         
         Ok(())
     }
-}
-
-#[derive(Default, AnchorSerialize, AnchorDeserialize, Clone, Debug)]
-pub struct Creator {
-    pub name: String,
-    pub avatar: String,
 }
 
 #[account]
@@ -83,7 +73,6 @@ pub struct Blog {
     pub bump: u8,
     pub post_count: u32,
     pub update_authority: Pubkey,
-    pub creator: Creator,
     pub followers: Vec<Pubkey>,
     pub following: Vec<Pubkey>,
 }
@@ -103,8 +92,6 @@ impl Default for PostState {
 #[derive(Default, AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct PostMetadata {
     pub description: String,
-    pub likes: u32,
-    pub state: PostState,
     pub title: String,
     pub uri: String,
 }
@@ -115,16 +102,18 @@ pub struct Post {
     pub bump: u8,
     pub data: PostMetadata,
     pub entry: u32,
+    pub likes: u32,
+    pub state: PostState,
     pub update_authority: Pubkey,
 }
 
 #[derive(Accounts)]
-#[instruction(blog_account_bump: u8, creator: Creator)]
+#[instruction(blog_account_bump: u8)]
 pub struct Initialize<'info> {
     #[account(
         init,
         seeds = [
-            POST.as_ref(),
+            b"blog".as_ref(),
             update_authority.key().as_ref(),
         ],
         bump = blog_account_bump,
@@ -146,28 +135,29 @@ pub struct FollowBlog<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(post_account_bump: u8, title: String, body: String)]
+#[instruction(post_account_bump: u8, data: PostMetadata)]
 pub struct CreatePost<'info> {
     #[account(mut, has_one = update_authority)]
     pub blog_account: Account<'info, Blog>,
     #[account(
         init,
         seeds = [
-            POST.as_ref(),
+            b"post".as_ref(),
             blog_account.key().as_ref(),
             blog_account.post_count.to_le_bytes().as_ref()
         ],
         bump = post_account_bump,
         payer = update_authority,
-        space = 10000
+        space = 1000
     )]
     pub post_account: Account<'info, Post>,
+    #[account(mut)]
     pub update_authority: Signer<'info>,
     pub system_program: Program<'info, System>
 }
 
 #[derive(Accounts)]
-#[instruction(tite: String, body: String)]
+#[instruction(data: PostMetadata)]
 pub struct UpdatePost<'info> {
     #[account(mut, has_one = update_authority)]
     pub post_account: Account<'info, Post>,
@@ -185,4 +175,10 @@ pub struct PublishPost<'info> {
 pub struct LikePost<'info> {
     #[account(mut)]
     pub post_account: Account<'info, Post>,
+}
+
+#[error]
+pub enum ErrorCode {
+    #[msg("Can't follow yourself")]
+    CannotFollowSelf,
 }
